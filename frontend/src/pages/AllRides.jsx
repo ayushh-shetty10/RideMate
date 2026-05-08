@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import api from "../services/api";
 import RideCard from "../components/RideCard";
+import SkeletonCard from "../components/SkeletonCard";
 import Navbar from "../components/Navbar";
 import FiltersModal from "../components/FiltersModal";
 import UserProfileModal from "../components/UserProfileModal";
@@ -48,42 +49,72 @@ const AllRides = () => {
   }, [filters]);
 
   const handleJoin = async (rideId) => {
-    try {
-      await api.post(`/rides/${rideId}/join`);
-      fetchRides();
-      if (selectedRide && selectedRide._id === rideId) {
-        // Refresh detail modal if open
-        const { data } = await api.get(`/rides`); // In a real app, fetch single ride
-        const updatedRide = data.find(r => r._id === rideId);
-        setSelectedRide(updatedRide);
+    // 1. Store previous state for rollback
+    const previousRides = [...rides];
+    
+    // 2. Optimistically update local state
+    setRides(prevRides => prevRides.map(ride => {
+      if (ride._id === rideId) {
+        return {
+          ...ride,
+          participants: [...ride.participants, user],
+          status: ride.participants.length + 1 >= ride.totalSeats ? "FULL" : "OPEN"
+        };
       }
+      return ride;
+    }));
+
+    try {
+      const { data: updatedRide } = await api.post(`/rides/${rideId}/join`);
+      // Update with server data to ensure consistency (e.g. if someone else joined simultaneously)
+      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to join ride");
+      // 3. Rollback on failure
+      setRides(previousRides);
+      alert(error.friendlyMessage || "Failed to join ride");
     }
   };
 
   const handleLeave = async (rideId) => {
-    try {
-      await api.post(`/rides/${rideId}/leave`);
-      fetchRides();
-      if (selectedRide && selectedRide._id === rideId) {
-        const { data } = await api.get(`/rides`);
-        const updatedRide = data.find(r => r._id === rideId);
-        setSelectedRide(updatedRide);
+    const previousRides = [...rides];
+    
+    setRides(prevRides => prevRides.map(ride => {
+      if (ride._id === rideId) {
+        return {
+          ...ride,
+          participants: ride.participants.filter(p => p._id !== user._id),
+          status: "OPEN"
+        };
       }
+      return ride;
+    }));
+
+    try {
+      const { data: updatedRide } = await api.post(`/rides/${rideId}/leave`);
+      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to leave ride");
+      setRides(previousRides);
+      alert(error.friendlyMessage || "Failed to leave ride");
     }
   };
 
   const handleCancel = async (rideId) => {
     if (!window.confirm("Are you sure you want to cancel this ride?")) return;
+    const previousRides = [...rides];
+    
+    setRides(prevRides => prevRides.map(ride => 
+      ride._id === rideId ? { ...ride, status: "CANCELLED" } : ride
+    ));
+
     try {
       await api.patch(`/rides/${rideId}/cancel`);
-      fetchRides();
       setIsRideDetailModalOpen(false);
+      fetchRides(); // Full refresh for cancellation as it's a destructive action
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to cancel ride");
+      setRides(previousRides);
+      alert(error.friendlyMessage || "Failed to cancel ride");
     }
   };
 
@@ -175,13 +206,11 @@ const AllRides = () => {
         )}
 
         {/* Rides Grid */}
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
-          </div>
-        ) : rides.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {rides.map((ride) => (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+          ) : rides.length > 0 ? (
+            rides.map((ride) => (
               <RideCard
                 key={ride._id}
                 ride={ride}
@@ -191,23 +220,23 @@ const AllRides = () => {
                 onOpenProfile={openProfile}
                 onOpenDetail={openRideDetail}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
-            <div className="mb-6 rounded-full bg-slate-900 p-8 shadow-inner">
-              <Search className="h-12 w-12 text-slate-700" />
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-24 text-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
+              <div className="mb-6 rounded-full bg-slate-900 p-8 shadow-inner">
+                <Search className="h-12 w-12 text-slate-700" />
+              </div>
+              <h3 className="text-2xl font-bold text-white">No matches found</h3>
+              <p className="mt-2 text-slate-400 max-w-sm mx-auto">Try adjusting your filters or search terms to find available rides.</p>
+              <button 
+                onClick={() => setFilters({ destination: "", date: "", transportMode: "" })}
+                className="mt-8 text-sm font-semibold text-indigo-400 hover:text-indigo-300"
+              >
+                Reset all filters
+              </button>
             </div>
-            <h3 className="text-2xl font-bold text-white">No matches found</h3>
-            <p className="mt-2 text-slate-400 max-w-sm mx-auto">Try adjusting your filters or search terms to find available rides.</p>
-            <button 
-              onClick={() => setFilters({ destination: "", date: "", transportMode: "" })}
-              className="mt-8 text-sm font-semibold text-indigo-400 hover:text-indigo-300"
-            >
-              Reset all filters
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       {/* Modals */}

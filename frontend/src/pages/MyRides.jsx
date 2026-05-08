@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import api from "../services/api";
 import RideCard from "../components/RideCard";
+import SkeletonCard from "../components/SkeletonCard";
 import RideDetailModal from "../components/RideDetailModal";
 import UserProfileModal from "../components/UserProfileModal";
 import Navbar from "../components/Navbar";
@@ -36,35 +37,56 @@ const MyRides = () => {
     }
   };
 
-  const handleJoin = async (id) => {
+  const handleJoin = async (rideId) => {
+    const previousRides = [...rides];
+    setRides(prev => prev.map(ride => {
+      if (ride._id === rideId) {
+        return { ...ride, participants: [...ride.participants, user], status: ride.participants.length + 1 >= ride.totalSeats ? "FULL" : "OPEN" };
+      }
+      return ride;
+    }));
+
     try {
-      await api.post(`/rides/${id}/join`);
-      fetchMyRides();
-      setIsRideDetailModalOpen(false);
+      const { data: updatedRide } = await api.post(`/rides/${rideId}/join`);
+      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to join ride");
+      setRides(previousRides);
+      alert(error.friendlyMessage || "Failed to join ride");
     }
   };
 
-  const handleLeave = async (id) => {
-    if (!window.confirm("Are you sure you want to leave this ride?")) return;
+  const handleLeave = async (rideId) => {
+    const previousRides = [...rides];
+    setRides(prev => prev.map(ride => {
+      if (ride._id === rideId) {
+        return { ...ride, participants: ride.participants.filter(p => p._id !== user._id), status: "OPEN" };
+      }
+      return ride;
+    }));
+
     try {
-      await api.post(`/rides/${id}/leave`);
-      fetchMyRides();
-      setIsRideDetailModalOpen(false);
+      const { data: updatedRide } = await api.post(`/rides/${rideId}/leave`);
+      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to leave ride");
+      setRides(previousRides);
+      alert(error.friendlyMessage || "Failed to leave ride");
     }
   };
 
-  const handleCancel = async (id) => {
+  const handleCancel = async (rideId) => {
     if (!window.confirm("Are you sure you want to cancel this ride? This will notify all participants.")) return;
+    const previousRides = [...rides];
+    setRides(prev => prev.map(ride => ride._id === rideId ? { ...ride, status: "CANCELLED" } : ride));
+
     try {
-      await api.patch(`/rides/${id}/cancel`);
+      await api.patch(`/rides/${rideId}/cancel`);
       fetchMyRides();
       setIsRideDetailModalOpen(false);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to cancel ride");
+      setRides(previousRides);
+      alert(error.friendlyMessage || "Failed to cancel ride");
     }
   };
 
@@ -78,8 +100,8 @@ const MyRides = () => {
     setIsUserProfileModalOpen(true);
   };
 
-  const hostedRides = rides.filter(ride => ride.creator._id === user?._id);
-  const joinedRides = rides.filter(ride => ride.creator._id !== user?._id);
+  const hostedRides = rides.filter(ride => ride.creator?._id === user?._id);
+  const joinedRides = rides.filter(ride => ride.creator?._id !== user?._id);
 
   return (
     <div className="min-h-screen bg-slate-950 font-sans">
@@ -126,9 +148,8 @@ const MyRides = () => {
         </div>
 
         {loading ? (
-          <div className="flex h-64 flex-col items-center justify-center gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
-            <p className="text-slate-500 font-medium">Loading your journeys...</p>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : (
           <>

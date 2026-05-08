@@ -34,7 +34,7 @@ const completeProfile = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).lean();
     if (user) {
       res.json(user);
     } else {
@@ -47,7 +47,7 @@ const getMe = async (req, res) => {
 
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-googleId");
+    const user = await User.findById(req.params.id).select("-googleId").lean();
     if (user) {
       res.json(user);
     } else {

@@ -18,7 +18,7 @@ const getJoinRideTemplate = (hostName, joinerName, ride) => {
         <p style="font-size: 16px; line-height: 1.5;">You can now coordinate with them via the RideMate platform.</p>
         
         <div style="text-align: center; margin-top: 32px;">
-          <a href="${process.env.FRONTEND_URL}/all-rides" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">Browse Other Rides</a>
+          <a href="${process.env.FRONTEND_URL}/all-rides" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">Go to site</a>
         </div>
       </div>
       <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8;">

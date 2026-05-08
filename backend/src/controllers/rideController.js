@@ -59,9 +59,10 @@ const getRides = async (req, res) => {
 
   try {
     const rides = await Ride.find(query)
-      .populate("creator", "name profilePicture email")
-      .populate("participants", "name profilePicture email")
-      .sort({ dateTime: 1 });
+      .populate("creator", "name profilePicture email department")
+      .populate("participants", "name profilePicture email department")
+      .sort({ dateTime: 1 })
+      .lean();
     res.json(rides);
   } catch (error) {
     console.error("Error fetching rides:", error);

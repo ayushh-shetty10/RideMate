@@ -8,21 +8,26 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const initializeAuth = async () => {
       const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const { data } = await api.get("/users/me");
-          setUser(data);
-        } catch (error) {
-          console.error("Failed to fetch user", error);
-          localStorage.removeItem("token");
-        }
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+
+      try {
+        const { data } = await api.get("/users/me");
+        setUser(data);
+      } catch (error) {
+        console.error("Auth initialization failed:", error.friendlyMessage || error);
+        localStorage.removeItem("token");
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    fetchUser();
+    initializeAuth();
   }, []);
 
   const login = (userData, token) => {

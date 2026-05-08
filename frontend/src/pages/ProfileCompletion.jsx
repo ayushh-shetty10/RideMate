@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { AuthContext } from "../contexts/AuthContext";
-import { User, BookOpen, GraduationCap, Hash, ArrowRight } from "lucide-react";
+import { User, BookOpen, GraduationCap, Hash, ArrowRight, Loader2 } from "lucide-react";
 
 const ProfileCompletion = () => {
   const navigate = useNavigate();
@@ -123,8 +123,14 @@ const ProfileCompletion = () => {
               disabled={loading}
               className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-4 font-medium text-white transition-all hover:bg-indigo-500 active:scale-[0.98] disabled:opacity-70"
             >
-              {loading ? "Saving..." : "Complete Profile"}
-              {!loading && <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />}
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  Complete Profile
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
             </button>
 
           </form>

@@ -3,7 +3,7 @@ import {
   X, MapPin, Calendar, Clock, Car, Users, 
   Mail, ExternalLink, ChevronRight, 
   AlertCircle, Trash2, Crown, CheckCircle2,
-  AlertTriangle
+  AlertTriangle, Loader2
 } from "lucide-react";
 import ReportModal from "./ReportModal";
 
@@ -18,13 +18,25 @@ const RideDetailModal = ({
   onOpenProfile 
 }) => {
   const [reportData, setReportData] = React.useState({ isOpen: false, reportedUserId: null, reportedUserName: "" });
+  const [isProcessing, setIsProcessing] = React.useState(false);
+
+  const handleAction = async (actionFn, ...args) => {
+    setIsProcessing(true);
+    try {
+      await actionFn(...args);
+    } catch (error) {
+      console.error("Action failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   if (!isOpen || !ride) return null;
 
-  const isCreator = ride.creator._id === currentUserId;
-  const isParticipant = ride.participants.some(p => p._id === currentUserId);
+  const isCreator = ride.creator?._id === currentUserId;
+  const isParticipant = ride.participants?.some(p => p._id === currentUserId);
   const isCancelled = ride.status === "CANCELLED";
-  const seatsLeft = ride.totalSeats - ride.participants.length;
+  const seatsLeft = ride.totalSeats - (ride.participants?.length || 0);
   const isFull = ride.status === "FULL" || seatsLeft <= 0;
 
   const formatDate = (dateString) => {
@@ -43,7 +55,7 @@ const RideDetailModal = ({
   };
 
   const handleContactUser = (targetUser) => {
-    const isHost = targetUser._id === ride.creator._id;
+    const isHost = targetUser._id === ride.creator?._id;
     const subject = encodeURIComponent(isHost 
       ? `RideMate Coordination: Ride to ${ride.destination}` 
       : `RideMate: Travel Mate Connection for ${ride.destination} trip`
@@ -84,7 +96,7 @@ const RideDetailModal = ({
           </div>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setReportData({ isOpen: true, reportedUserId: ride.creator._id, reportedUserName: ride.creator.name })}
+              onClick={() => setReportData({ isOpen: true, reportedUserId: ride.creator?._id, reportedUserName: ride.creator?.name })}
               className="rounded-full bg-red-500/10 p-2 text-red-400 hover:bg-red-500 hover:text-white transition-all"
               title="Report Ride"
             >
@@ -159,12 +171,12 @@ const RideDetailModal = ({
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                 Members Joined
                 <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">
-                  {ride.participants.length}/{ride.totalSeats}
+                  {ride.participants?.length || 0}/{ride.totalSeats}
                 </span>
               </h4>
               <div className="space-y-2">
-                {ride.participants.map((participant) => {
-                  const isHost = participant._id === ride.creator._id;
+                {ride.participants?.map((participant) => {
+                  const isHost = participant._id === ride.creator?._id;
                   const isMe = participant._id === currentUserId;
                   return (
                     <div 
@@ -236,10 +248,11 @@ const RideDetailModal = ({
               <>
                 {isCreator ? (
                   <button
-                    onClick={() => onCancel(ride._id)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-sm font-bold text-red-400 transition-all hover:bg-red-500 hover:text-white"
+                    onClick={() => handleAction(onCancel, ride._id)}
+                    disabled={isProcessing}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-sm font-bold text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-50"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     Cancel Ride
                   </button>
                 ) : (
@@ -255,19 +268,27 @@ const RideDetailModal = ({
                     )}
                     {isParticipant ? (
                       <button
-                        onClick={() => onLeave(ride._id)}
-                        className="flex-1 rounded-2xl bg-white/5 py-4 text-sm font-bold text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
+                        onClick={() => handleAction(onLeave, ride._id)}
+                        disabled={isProcessing}
+                        className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white/5 py-4 text-sm font-bold text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
                       >
+                        {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
                         Leave Ride
                       </button>
                     ) : (
                       <button
-                        onClick={() => onJoin(ride._id)}
-                        disabled={ride.status !== "OPEN" || isFull}
+                        onClick={() => handleAction(onJoin, ride._id)}
+                        disabled={ride.status !== "OPEN" || isFull || isProcessing}
                         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 py-4.5 text-sm font-bold text-white transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:grayscale shadow-xl shadow-indigo-600/20"
                       >
-                        {isFull ? "Ride is Full" : "Join This Ride"}
-                        {!isFull && <ChevronRight className="h-5 w-5" />}
+                        {isProcessing ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            {isFull ? "Ride is Full" : "Join This Ride"}
+                            {!isFull && <ChevronRight className="h-5 w-5" />}
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -283,16 +304,16 @@ const RideDetailModal = ({
             )}
           </div>
 
-      <ReportModal
-        isOpen={reportData.isOpen}
-        onClose={() => setReportData({ ...reportData, isOpen: false })}
-        reportedUserId={reportData.reportedUserId}
-        reportedUserName={reportData.reportedUserName}
-        rideId={ride._id}
-      />
+          <ReportModal
+            isOpen={reportData.isOpen}
+            onClose={() => setReportData({ ...reportData, isOpen: false })}
+            reportedUserId={reportData.reportedUserId}
+            reportedUserName={reportData.reportedUserName}
+            rideId={ride._id}
+          />
+        </div>
+      </div>
     </div>
-  </div>  
-  </div>
   );
 };
 
