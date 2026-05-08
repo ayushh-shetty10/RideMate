@@ -11,7 +11,9 @@ const RideShowcase = () => {
     const fetchRecentRides = async () => {
       try {
         const { data } = await api.get("/rides");
-        setRides(data.slice(0, 8)); // Show first 8 rides
+        if (Array.isArray(data)) {
+          setRides(data.slice(0, 8));
+        }
       } catch (error) {
         console.error("Error fetching rides for showcase:", error);
       } finally {
@@ -21,7 +23,7 @@ const RideShowcase = () => {
     fetchRecentRides();
   }, []);
 
-  if (loading || rides.length === 0) return null;
+  if (loading || !Array.isArray(rides) || rides.length === 0) return null;
 
   return (
     <section className="py-24 overflow-hidden bg-slate-950">
@@ -51,13 +53,13 @@ const RideShowcase = () => {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <img 
-                    src={ride.creator.profilePicture || `https://ui-avatars.com/api/?name=${ride.creator.name}&background=6366f1&color=fff`} 
+                    src={ride.creator?.profilePicture || `https://ui-avatars.com/api/?name=${ride.creator?.name || 'User'}&background=6366f1&color=fff`} 
                     alt="" 
                     className="h-8 w-8 rounded-full border border-white/10"
                   />
                   <div>
-                    <p className="text-xs font-bold text-white">{ride.creator.name}</p>
-                    <p className="text-[10px] text-slate-500">{ride.creator.department}</p>
+                    <p className="text-xs font-bold text-white">{ride.creator?.name || "Unknown User"}</p>
+                    <p className="text-[10px] text-slate-500">{ride.creator?.department || "Student"}</p>
                   </div>
                 </div>
                 <div className="rounded-full bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-400">

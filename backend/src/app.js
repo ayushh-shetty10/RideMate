@@ -14,13 +14,14 @@ app.use(cors({
   credentials: true
 }));
 
-app.use("/",(req,res)=>{
-  res.send("Backend server live and running!");
-})
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/rides", rideRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
+
+app.get("/", (req, res) => {
+  res.send("Backend server live and running!");
+});
 
 module.exports = app;
