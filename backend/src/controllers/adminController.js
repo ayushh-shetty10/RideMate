@@ -9,6 +9,12 @@ const getStats = async (req, res) => {
     const totalRides = await Ride.countDocuments();
     const activeRides = await Ride.countDocuments({ status: { $ne: "CANCELLED" }, dateTime: { $gte: new Date() } });
     const cancelledRides = await Ride.countDocuments({ status: "CANCELLED" });
+    const completedRides = await Ride.countDocuments({ 
+      $or: [
+        { status: "COMPLETED" },
+        { status: { $ne: "CANCELLED" }, dateTime: { $lt: new Date() } }
+      ]
+    });
     const pendingReports = await Report.countDocuments({ status: "PENDING" });
 
     res.json({
@@ -16,6 +22,7 @@ const getStats = async (req, res) => {
       totalRides,
       activeRides,
       cancelledRides,
+      completedRides,
       pendingReports,
     });
   } catch (error) {

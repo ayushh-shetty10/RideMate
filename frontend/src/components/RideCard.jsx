@@ -71,10 +71,11 @@ const RideCard = ({ ride, onJoin, onLeave, currentUserId, onOpenProfile, onOpenD
         </button>
         <div className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 ${
           isCancelled ? "bg-red-500/10 text-red-400" :
+          ride.status === "COMPLETED" ? "bg-teal-500/10 text-teal-400" :
           isFull ? "bg-amber-500/10 text-amber-400" : 
           "bg-emerald-500/10 text-emerald-400"
         }`}>
-          {isCancelled ? <AlertCircle className="h-3 w-3" /> : isFull ? <Users className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+          {isCancelled ? <AlertCircle className="h-3 w-3" /> : ride.status === "COMPLETED" ? <CheckCircle2 className="h-3 w-3" /> : isFull ? <Users className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
           {ride.status}
         </div>
       </div>
@@ -166,8 +167,8 @@ const RideCard = ({ ride, onJoin, onLeave, currentUserId, onOpenProfile, onOpenD
             disabled={ride.status !== "OPEN" || seatsLeft <= 0}
             className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3.5 text-sm font-bold text-white transition-all hover:shadow-lg hover:shadow-indigo-600/20 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:hover:shadow-none"
           >
-            {isFull ? "Ride Full" : "Join Ride"}
-            {!isFull && <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
+            {ride.status === "COMPLETED" ? "Ride Completed" : isFull ? "Ride Full" : "Join Ride"}
+            {ride.status === "OPEN" && !isFull && <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
           </button>
         )}
       </div>

@@ -84,6 +84,24 @@ const FiltersModal = ({ isOpen, onClose, filters, setFilters, onClear }) => {
                 Cab
               </button>
             </div>
+          {/* Ride Status */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ride Status</label>
+            <div className="flex flex-wrap gap-3">
+              {["OPEN", "COMPLETED", "CANCELLED"].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilters({ ...filters, status })}
+                  className={`flex-1 rounded-2xl border py-4 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    filters.status === status
+                      ? "border-indigo-500 bg-indigo-500/10 text-white"
+                      : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10"
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

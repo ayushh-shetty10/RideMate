@@ -100,10 +100,11 @@ const AdminDashboard = () => {
   };
 
   const renderStats = () => (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <StatCard icon={<Users className="h-6 w-6 text-blue-400" />} label="Total Users" value={stats?.totalUsers} color="blue" />
       <StatCard icon={<Car className="h-6 w-6 text-indigo-400" />} label="Total Rides" value={stats?.totalRides} color="indigo" />
       <StatCard icon={<CheckCircle className="h-6 w-6 text-emerald-400" />} label="Active Rides" value={stats?.activeRides} color="emerald" />
+      <StatCard icon={<CheckCircle className="h-6 w-6 text-teal-400" />} label="Completed" value={stats?.completedRides} color="teal" />
       <StatCard icon={<XCircle className="h-6 w-6 text-rose-400" />} label="Cancelled" value={stats?.cancelledRides} color="rose" />
       <StatCard icon={<AlertTriangle className="h-6 w-6 text-amber-400" />} label="Pending Reports" value={stats?.pendingReports} color="amber" />
     </div>

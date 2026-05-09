@@ -25,6 +25,7 @@ const AllRides = () => {
     destination: "",
     date: "",
     transportMode: "",
+    status: "",
   });
 
   const isMounted = useRef(true);
@@ -43,6 +44,7 @@ const AllRides = () => {
       if (filters.destination) params.append("destination", filters.destination);
       if (filters.date) params.append("date", filters.date);
       if (filters.transportMode) params.append("transportMode", filters.transportMode);
+      if (filters.status) params.append("status", filters.status);
 
       const { data } = await api.get(`/rides?${params.toString()}`, { signal });
       if (isMounted.current) setRides(data);
@@ -222,7 +224,7 @@ const AllRides = () => {
               </div>
             ))}
             <button 
-              onClick={() => setFilters({ destination: "", date: "", transportMode: "" })}
+              onClick={() => setFilters({ destination: "", date: "", transportMode: "", status: "" })}
               className="text-xs font-medium text-indigo-400 hover:text-indigo-300 underline underline-offset-4"
             >
               Clear all
@@ -270,7 +272,7 @@ const AllRides = () => {
         onClose={() => setIsFilterModalOpen(false)}
         filters={filters}
         setFilters={setFilters}
-        onClear={() => setFilters({ destination: "", date: "", transportMode: "" })}
+        onClear={() => setFilters({ destination: "", date: "", transportMode: "", status: "" })}
       />
 
       <UserProfileModal

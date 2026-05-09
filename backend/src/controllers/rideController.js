@@ -31,8 +31,16 @@ const createRide = async (req, res) => {
 
 // Get all rides with filters and time window matching
 const getRides = async (req, res) => {
-  const { destination, date, transportMode } = req.query;
-  let query = { status: "OPEN" };
+  const { destination, date, transportMode, status } = req.query;
+  let query = {};
+
+  if (status) {
+    query.status = status;
+  } else {
+    // Default view: only show future OPEN/FULL rides
+    query.status = { $in: ["OPEN", "FULL"] };
+    query.dateTime = { $gte: new Date() };
+  }
 
   if (destination) {
     query.destination = { $regex: destination, $options: "i" };
@@ -44,17 +52,9 @@ const getRides = async (req, res) => {
 
   if (date) {
     const searchDate = new Date(date);
-    // Time window matching: ±60 minutes
     const startTime = new Date(searchDate.getTime() - 60 * 60 * 1000);
     const endTime = new Date(searchDate.getTime() + 60 * 60 * 1000);
-
-    query.dateTime = {
-      $gte: startTime,
-      $lte: endTime,
-    };
-  } else {
-    // If no date specified, show future rides
-    query.dateTime = { $gte: new Date() };
+    query.dateTime = { $gte: startTime, $lte: endTime };
   }
 
   try {
@@ -98,9 +98,15 @@ const joinRide = async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    if (ride.status === "CANCELLED") {
-      return res.status(400).json({ message: "This ride has been cancelled and cannot be joined" });
+    // Prevent joining cancelled or completed rides
+    if (ride.status === "CANCELLED" || ride.status === "COMPLETED" || new Date(ride.dateTime) < new Date()) {
+      const currentStatus = (new Date(ride.dateTime) < new Date()) ? "COMPLETED" : ride.status;
+      return res.status(400).json({ 
+        message: `This ride cannot be joined because it is ${currentStatus.toLowerCase()}.` 
+      });
     }
+
+
 
     if (ride.participants.length >= ride.totalSeats) {
       return res.status(400).json({ message: "This ride is already full" });
@@ -149,6 +155,14 @@ const leaveRide = async (req, res) => {
 
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // Prevent leaving cancelled or completed rides
+    if (ride.status === "CANCELLED" || ride.status === "COMPLETED" || new Date(ride.dateTime) < new Date()) {
+      const currentStatus = (new Date(ride.dateTime) < new Date()) ? "COMPLETED" : ride.status;
+      return res.status(400).json({ 
+        message: `Cannot leave a ${currentStatus.toLowerCase()} ride.` 
+      });
     }
 
     if (ride.creator.toString() === req.user._id.toString()) {
@@ -204,6 +218,11 @@ const cancelRide = async (req, res) => {
 
     if (ride.creator._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Only the host can cancel this ride" });
+    }
+
+    // Prevent cancelling completed rides
+    if (ride.status === "COMPLETED" || new Date(ride.dateTime) < new Date()) {
+      return res.status(400).json({ message: "Ride is already completed and cannot be cancelled" });
     }
 
     ride.status = "CANCELLED";
