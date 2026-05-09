@@ -9,6 +9,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      // Wake up the backend immediately in the background
+      api.get("/health").catch(() => {});
+
       const token = localStorage.getItem("token");
       if (!token) {
         setIsLoading(false);

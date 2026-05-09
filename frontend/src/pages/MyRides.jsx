@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import api from "../services/api";
 import RideCard from "../components/RideCard";
 import SkeletonCard from "../components/SkeletonCard";
@@ -21,19 +21,34 @@ const MyRides = () => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
 
+  const isMounted = useRef(true);
+
   useEffect(() => {
-    fetchMyRides();
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
-  const fetchMyRides = async () => {
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMyRides(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  const fetchMyRides = async (signal) => {
     setLoading(true);
     try {
-      const { data } = await api.get("/rides/my-rides");
-      setRides(data);
+      const { data } = await api.get("/rides/my-rides", { signal });
+      if (isMounted.current) setRides(data);
     } catch (error) {
-      console.error("Error fetching my rides:", error);
+      if (!error.isCancelled) {
+        console.error("Error fetching my rides:", error);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 
@@ -48,11 +63,15 @@ const MyRides = () => {
 
     try {
       const { data: updatedRide } = await api.post(`/rides/${rideId}/join`);
-      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
-      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      if (isMounted.current) {
+        setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+        if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      }
     } catch (error) {
-      setRides(previousRides);
-      alert(error.friendlyMessage || "Failed to join ride");
+      if (isMounted.current && !error.isCancelled) {
+        setRides(previousRides);
+        alert(error.friendlyMessage || "Failed to join ride");
+      }
     }
   };
 
@@ -67,11 +86,15 @@ const MyRides = () => {
 
     try {
       const { data: updatedRide } = await api.post(`/rides/${rideId}/leave`);
-      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
-      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      if (isMounted.current) {
+        setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+        if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      }
     } catch (error) {
-      setRides(previousRides);
-      alert(error.friendlyMessage || "Failed to leave ride");
+      if (isMounted.current && !error.isCancelled) {
+        setRides(previousRides);
+        alert(error.friendlyMessage || "Failed to leave ride");
+      }
     }
   };
 
@@ -82,11 +105,15 @@ const MyRides = () => {
 
     try {
       await api.patch(`/rides/${rideId}/cancel`);
-      fetchMyRides();
-      setIsRideDetailModalOpen(false);
+      if (isMounted.current) {
+        fetchMyRides();
+        setIsRideDetailModalOpen(false);
+      }
     } catch (error) {
-      setRides(previousRides);
-      alert(error.friendlyMessage || "Failed to cancel ride");
+      if (isMounted.current && !error.isCancelled) {
+        setRides(previousRides);
+        alert(error.friendlyMessage || "Failed to cancel ride");
+      }
     }
   };
 

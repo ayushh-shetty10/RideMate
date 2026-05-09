@@ -84,6 +84,7 @@ const Login = () => {
                 theme="filled_black"
                 shape="pill"
                 size="large"
+                use_fedcm_for_prompt={true}
               />
             </div>
             

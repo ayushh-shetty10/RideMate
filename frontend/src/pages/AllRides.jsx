@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import api from "../services/api";
 import RideCard from "../components/RideCard";
@@ -27,7 +27,16 @@ const AllRides = () => {
     transportMode: "",
   });
 
-  const fetchRides = async () => {
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const fetchRides = async (signal) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -35,17 +44,23 @@ const AllRides = () => {
       if (filters.date) params.append("date", filters.date);
       if (filters.transportMode) params.append("transportMode", filters.transportMode);
 
-      const { data } = await api.get(`/rides?${params.toString()}`);
-      setRides(data);
+      const { data } = await api.get(`/rides?${params.toString()}`, { signal });
+      if (isMounted.current) setRides(data);
     } catch (error) {
-      console.error("Error fetching rides:", error);
+      if (!error.isCancelled) {
+        console.error("Error fetching rides:", error);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRides();
+    const controller = new AbortController();
+    fetchRides(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [filters]);
 
   const handleJoin = async (rideId) => {
@@ -66,13 +81,15 @@ const AllRides = () => {
 
     try {
       const { data: updatedRide } = await api.post(`/rides/${rideId}/join`);
-      // Update with server data to ensure consistency (e.g. if someone else joined simultaneously)
-      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
-      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      if (isMounted.current) {
+        setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+        if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      }
     } catch (error) {
-      // 3. Rollback on failure
-      setRides(previousRides);
-      alert(error.friendlyMessage || "Failed to join ride");
+      if (isMounted.current && !error.isCancelled) {
+        setRides(previousRides);
+        alert(error.friendlyMessage || "Failed to join ride");
+      }
     }
   };
 
@@ -92,11 +109,15 @@ const AllRides = () => {
 
     try {
       const { data: updatedRide } = await api.post(`/rides/${rideId}/leave`);
-      setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
-      if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      if (isMounted.current) {
+        setRides(prev => prev.map(r => r._id === rideId ? updatedRide : r));
+        if (selectedRide?._id === rideId) setSelectedRide(updatedRide);
+      }
     } catch (error) {
-      setRides(previousRides);
-      alert(error.friendlyMessage || "Failed to leave ride");
+      if (isMounted.current && !error.isCancelled) {
+        setRides(previousRides);
+        alert(error.friendlyMessage || "Failed to leave ride");
+      }
     }
   };
 
@@ -110,11 +131,15 @@ const AllRides = () => {
 
     try {
       await api.patch(`/rides/${rideId}/cancel`);
-      setIsRideDetailModalOpen(false);
-      fetchRides(); // Full refresh for cancellation as it's a destructive action
+      if (isMounted.current) {
+        setIsRideDetailModalOpen(false);
+        fetchRides(); // Full refresh for cancellation as it's a destructive action
+      }
     } catch (error) {
-      setRides(previousRides);
-      alert(error.friendlyMessage || "Failed to cancel ride");
+      if (isMounted.current && !error.isCancelled) {
+        setRides(previousRides);
+        alert(error.friendlyMessage || "Failed to cancel ride");
+      }
     }
   };
 
