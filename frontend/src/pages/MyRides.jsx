@@ -30,14 +30,6 @@ const MyRides = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchMyRides(controller.signal);
-    return () => {
-      controller.abort();
-    };
-  }, []);
-
   const fetchMyRides = async (signal) => {
     setLoading(true);
     try {
@@ -51,6 +43,14 @@ const MyRides = () => {
       if (isMounted.current) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMyRides(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const handleJoin = async (rideId) => {
     const previousRides = [...rides];

@@ -84,6 +84,8 @@ const FiltersModal = ({ isOpen, onClose, filters, setFilters, onClear }) => {
                 Cab
               </button>
             </div>
+          </div>
+
           {/* Ride Status */}
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ride Status</label>

@@ -40,13 +40,15 @@ const AllRides = () => {
   const fetchRides = async (signal) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filters.destination) params.append("destination", filters.destination);
-      if (filters.date) params.append("date", filters.date);
-      if (filters.transportMode) params.append("transportMode", filters.transportMode);
-      if (filters.status) params.append("status", filters.status);
-
-      const { data } = await api.get(`/rides?${params.toString()}`, { signal });
+      const { data } = await api.get("/rides", {
+        params: {
+          destination: filters.destination,
+          date: filters.date,
+          transportMode: filters.transportMode,
+          status: filters.status,
+        },
+        signal
+      });
       if (isMounted.current) setRides(data);
     } catch (error) {
       if (!error.isCancelled) {
