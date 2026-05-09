@@ -2,6 +2,10 @@
 
 RideMate is a premium, secure, and exclusive ride-sharing platform designed specifically for college communities. It helps students connect with verified peers to share journeys, save money, and reduce their carbon footprint.
 
+# Go to Website 
+https://ride-mate-six.vercel.app
+
+
 ## 🚀 Key Features
 
 - **Google OAuth with College Restriction**: Exclusive access for verified students using specific campus domains.
