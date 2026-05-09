@@ -52,26 +52,42 @@ rideSchema.index({ destination: "text", status: 1 });
 rideSchema.index({ dateTime: 1, status: 1 });
 
 // Single pre-save hook: handles completion and seat capacity together
-rideSchema.pre("save", function (next) {
-  // If already cancelled, don't touch the status
-  if (this.status === "CANCELLED") {
-    return next();
-  }
+rideSchema.pre("save", async function () {
+  console.log(`🛡️ Middleware: Processing ride ${this._id || 'new'} [Current Status: ${this.status}]`);
 
-  // Auto-complete rides whose scheduled time has passed
-  if (this.dateTime && this.dateTime < new Date()) {
-    this.status = "COMPLETED";
-    return next();
-  }
+  try {
+    // If already cancelled, don't touch the status
+    if (this.status === "CANCELLED") {
+      return;
+    }
 
-  // Sync FULL / OPEN based on seat count
-  if (this.participants.length >= this.totalSeats) {
-    this.status = "FULL";
-  } else if (this.status === "FULL" && this.participants.length < this.totalSeats) {
-    this.status = "OPEN";
-  }
+    // Auto-complete rides whose scheduled time has passed
+    const now = new Date();
+    if (this.dateTime && this.dateTime < now) {
+      if (this.status !== "COMPLETED") {
+        console.log(`✅ Lifecycle: Marking ride ${this._id} as COMPLETED (overdue)`);
+        this.status = "COMPLETED";
+      }
+      return;
+    }
 
-  next();
+    // Sync FULL / OPEN based on seat count
+    const participantCount = this.participants.length;
+    const previousStatus = this.status;
+
+    if (participantCount >= this.totalSeats) {
+      this.status = "FULL";
+    } else {
+      this.status = "OPEN";
+    }
+
+    if (previousStatus !== this.status) {
+      console.log(`🔄 Lifecycle: Ride ${this._id} status changed: ${previousStatus} -> ${this.status} (${participantCount}/${this.totalSeats} seats)`);
+    }
+  } catch (error) {
+    console.error(`❌ Middleware Error for ride ${this._id}:`, error);
+    throw error; // Propagate error to prevent saving invalid state
+  }
 });
 
 module.exports = mongoose.model("Ride", rideSchema);
