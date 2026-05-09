@@ -119,19 +119,23 @@ const joinRide = async (req, res) => {
 
     await ride.save();
 
-    // Send email to host
-    const joiner = await User.findById(req.user._id);
-    await sendEmail({
-      to: ride.creator.email,
-      subject: `New Travel Mate for your ride to ${ride.destination}!`,
-      html: getJoinRideTemplate(ride.creator.name, joiner.name, ride),
-    });
-
     const updatedRide = await Ride.findById(req.params.id)
       .populate("creator", "name profilePicture email")
       .populate("participants", "name profilePicture email");
 
+    // Send response immediately
     res.json(updatedRide);
+
+    // Send email asynchronously in the background
+    User.findById(req.user._id).then(joiner => {
+      if (joiner) {
+        sendEmail({
+          to: ride.creator.email,
+          subject: `New Travel Mate for your ride to ${ride.destination}!`,
+          html: getJoinRideTemplate(ride.creator.name, joiner.name, ride),
+        }).catch(err => console.error("Background email error:", err));
+      }
+    }).catch(err => console.error("Background user fetch error:", err));
   } catch (error) {
     console.error("Error joining ride:", error);
     res.status(500).json({ message: "Failed to join ride" });
@@ -164,19 +168,23 @@ const leaveRide = async (req, res) => {
 
     await ride.save();
 
-    // Send email to host
-    const leaver = await User.findById(req.user._id);
-    await sendEmail({
-      to: ride.creator.email,
-      subject: `Participant update: Ride to ${ride.destination}`,
-      html: getLeaveRideTemplate(ride.creator.name, leaver.name, ride),
-    });
-
     const updatedRide = await Ride.findById(req.params.id)
       .populate("creator", "name profilePicture email")
       .populate("participants", "name profilePicture email");
 
+    // Send response immediately
     res.json(updatedRide);
+
+    // Send email asynchronously in the background
+    User.findById(req.user._id).then(leaver => {
+      if (leaver) {
+        sendEmail({
+          to: ride.creator.email,
+          subject: `Participant update: Ride to ${ride.destination}`,
+          html: getLeaveRideTemplate(ride.creator.name, leaver.name, ride),
+        }).catch(err => console.error("Background email error:", err));
+      }
+    }).catch(err => console.error("Background user fetch error:", err));
   } catch (error) {
     console.error("Error leaving ride:", error);
     res.status(500).json({ message: "Failed to leave ride" });
@@ -201,7 +209,10 @@ const cancelRide = async (req, res) => {
     ride.status = "CANCELLED";
     await ride.save();
 
-    // Notify all participants except the creator
+    // Send response immediately
+    res.json({ message: "Ride cancelled and participants will be notified" });
+
+    // Notify all participants except the creator asynchronously in the background
     const notificationPromises = ride.participants
       .filter(p => p._id.toString() !== req.user._id.toString())
       .map(participant => 
@@ -209,12 +220,10 @@ const cancelRide = async (req, res) => {
           to: participant.email,
           subject: `Urgent: Ride to ${ride.destination} Cancelled`,
           html: getCancelRideTemplate(participant.name, ride),
-        })
+        }).catch(err => console.error("Background email error:", err))
       );
 
-    await Promise.all(notificationPromises);
-
-    res.json({ message: "Ride cancelled and participants notified" });
+    Promise.allSettled(notificationPromises).catch(err => console.error("Background notifications error:", err));
   } catch (error) {
     console.error("Error cancelling ride:", error);
     res.status(500).json({ message: "Failed to cancel ride" });

@@ -16,26 +16,31 @@ const createReport = async (req, res) => {
       description,
     });
 
-    // Send notification to admins
-    const reporter = await User.findById(req.user._id);
-    const reportedUser = await User.findById(reportedUserId);
-    
-    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(",") : [];
-    
-    if (adminEmails.length > 0 && reporter && reportedUser) {
-      const emailHtml = getReportAdminTemplate(reporter, reportedUser, report);
-      
-      // Send to all admins
-      for (const email of adminEmails) {
-        await sendEmail({
-          to: email.trim(),
-          subject: `⚠️ URGENT: New Safety Report on RideMate`,
-          html: emailHtml,
-        });
-      }
-    }
-
+    // Send response immediately
     res.status(201).json(report);
+
+    // Send notification to admins asynchronously in the background
+    Promise.all([
+      User.findById(req.user._id),
+      User.findById(reportedUserId)
+    ]).then(([reporter, reportedUser]) => {
+      const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(",") : [];
+      
+      if (adminEmails.length > 0 && reporter && reportedUser) {
+        const emailHtml = getReportAdminTemplate(reporter, reportedUser, report);
+        
+        // Send to all admins
+        const emailPromises = adminEmails.map(email => 
+          sendEmail({
+            to: email.trim(),
+            subject: `⚠️ URGENT: New Safety Report on RideMate`,
+            html: emailHtml,
+          }).catch(err => console.error("Background admin email error:", err))
+        );
+        
+        Promise.allSettled(emailPromises).catch(err => console.error("Background admin notifications error:", err));
+      }
+    }).catch(err => console.error("Background report users fetch error:", err));
   } catch (error) {
     console.error("Error creating report:", error);
     res.status(400).json({ message: "Failed to submit report" });
