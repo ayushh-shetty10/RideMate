@@ -62,11 +62,5 @@ VITE_BACKEND_URL=http://localhost:3000
 - **Database**: **MongoDB** 
 
 
-## 📸 Screenshots
-*(Placeholders for future screenshots)*
-- [Landing Page]
-- [Ride Discovery]
-- [Admin Dashboard]
-
 ---
 Made with ❤️ for the college community.
